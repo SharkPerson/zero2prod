@@ -18,8 +18,8 @@ async fn health_check(_: HttpRequest) -> impl Responder {
 
 #[derive(serde::Deserialize)]
 pub struct FormData {
-    email: String,
-    name: String,
+    _email: String,
+    _name: String,
 }
 
 // before calling this function, actix-web invokes the from_request method for all of this
