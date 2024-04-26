@@ -1,9 +1,12 @@
 use actix_web::{web, HttpResponse};
+use chrono::Utc;
+use sqlx::PgPool;
+use uuid::Uuid;
 
 #[derive(serde::Deserialize)]
 pub struct FormData {
-    _email: String,
-    _name: String,
+    email: String,
+    name: String,
 }
 
 // before calling this function, actix-web invokes the from_request method for all of this
@@ -15,6 +18,28 @@ pub struct FormData {
 //
 // If Form::form_request fails, return 400 BAD REQUEST, else if this function is invoked, returns
 // the functions value (in this case, 200 OK)
-pub async fn subscribe(_form: web::Form<FormData>) -> HttpResponse {
-    HttpResponse::Ok().finish()
+//
+// actix-web has a hashmap of types which is used to check if a record already exists by checking
+// its type. If so, it retrieves the type and passes it to the handler.
+// This is a way of doing "dependency injection"
+pub async fn subscribe(form: web::Form<FormData>, db_pool: web::Data<PgPool>) -> HttpResponse {
+    match sqlx::query!(
+        r#"
+        INSERT INTO subscriptions (id, email, name, subscribed_at)
+        VALUES ($1, $2, $3, $4)
+        "#,
+        Uuid::new_v4(),
+        form.email,
+        form.name,
+        Utc::now()
+    )
+    .execute(db_pool.get_ref())
+    .await
+    {
+        Ok(_) => HttpResponse::Ok().finish(),
+        Err(e) => {
+            println!("Failed to execute query {}", e);
+            HttpResponse::InternalServerError().finish()
+        }
+    }
 }
